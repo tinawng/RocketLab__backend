@@ -1,0 +1,16 @@
+{
+  "name": "rocketlab-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "dev": "nodemon app.js",
+    "midi-outputs": "node midi-outputs.js",
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "jzz": "^1.4.5",
+    "node-audiorecorder": "^2.2.0",
+    "websocket": "^1.0.34"
+  }
+}
