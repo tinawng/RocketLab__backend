@@ -2,6 +2,7 @@
   "name": "rocketlab-backend",
   "version": "1.0.0",
   "description": "",
+  "type": "module",
   "main": "app.js",
   "scripts": {
     "dev": "nodemon app.js",
@@ -9,8 +10,10 @@
     "start": "node app.js"
   },
   "dependencies": {
+    "dotenv": "^10.0.0",
     "jzz": "^1.4.5",
     "node-audiorecorder": "^2.2.0",
-    "websocket": "^1.0.34"
+    "websocket": "^1.0.34",
+    "ws": "^8.2.3"
   }
 }

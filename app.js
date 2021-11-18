@@ -1,51 +1,56 @@
-var WebSocketServer = require('websocket').server;
-var http = require('http');
+import dotenv from 'dotenv'
+dotenv.config();
+import http from 'http';
+import { readFileSync } from 'fs';
+import { WebSocketServer } from 'ws';
+import JZZ from 'jzz';
 
-var server = http.createServer(function(request, response) {
+// 🎹 Connect to output MIDI device
+var midi_output = null;
+(async () => { midi_output = await JZZ().openMidiOut(process.env.MIDI_DEVICE_PORT).or('Cannot open MIDI Out port!'); })();
+
+
+var server = http.createServer(function (request, response) {
     console.log((new Date()) + ' Received request for ' + request.url);
     response.writeHead(404);
     response.end();
 });
-server.listen(8080, function() {
-    console.log((new Date()) + ' Server is listening on port 8080');
+const wss = new WebSocketServer({ server });
+
+wss.on('connection', function connection(ws) {
+    ws.on('message', function message(data) {
+        // 🚨 Parse incomming Buffer
+        data = JSON.parse('[' + data.toString() + ']')
+        let midi_event = [decimalToHex(data[0]), data[1], Math.floor(data[2])];
+        console.log(midi_event);
+
+        try {
+            midi_output.send(midi_event);
+
+
+        } catch (e) { }
+
+        // 📢 Broadcast event
+        wss.clients.forEach(function each(client) {
+            if (client._readyState === 1)
+                client.send(JSON.stringify(data));
+
+        });
+    });
+
+    // ws.send('something');
 });
 
-wsServer = new WebSocketServer({
-    httpServer: server,
-    // You should not use autoAcceptConnections for production
-    // applications, as it defeats all standard cross-origin protection
-    // facilities built into the protocol and the browser.  You should
-    // *always* verify the connection's origin and decide whether or not
-    // to accept it.
-    autoAcceptConnections: false
-});
+server.listen(8123);
 
-function originIsAllowed(origin) {
-  // put logic here to detect whether the specified origin is allowed.
-  return true;
+
+// 🔧 Utils functions
+function decimalToHex(dec) {
+    return '0x' + (dec + 0x10000).toString(16).substr(-4).toUpperCase();
 }
-
-wsServer.on('request', function(request) {
-    if (!originIsAllowed(request.origin)) {
-      // Make sure we only accept requests from an allowed origin
-      request.reject();
-      console.log((new Date()) + ' Connection from origin ' + request.origin + ' rejected.');
-      return;
+function midiPanic() {
+    for (let midi_note = 0; midi_note <= 127; midi_note++) {
+        let midi_event = [decimalToHex(144), midi_note, 0]
+        midi_output.send(midi_event)
     }
-    
-    var connection = request.accept('echo-protocol', request.origin);
-    console.log((new Date()) + ' Connection accepted.');
-    connection.on('message', function(message) {
-        if (message.type === 'utf8') {
-            console.log('Received Message: ' + message.utf8Data);
-            connection.sendUTF(message.utf8Data);
-        }
-        else if (message.type === 'binary') {
-            console.log('Received Binary Message of ' + message.binaryData.length + ' bytes');
-            connection.sendBytes(message.binaryData);
-        }
-    });
-    connection.on('close', function(reasonCode, description) {
-        console.log((new Date()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
-    });
-});
+}

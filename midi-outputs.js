@@ -1,4 +1,4 @@
-const JZZ = require('jzz');
+import  JZZ from 'jzz';
 
 var port = 0;
 var midi_device = null;
