@@ -1,14 +1,23 @@
-import dotenv from 'dotenv'
+import dotenv from 'dotenv';
 dotenv.config();
 import http from 'http';
-import { readFileSync } from 'fs';
 import { WebSocketServer } from 'ws';
 import JZZ from 'jzz';
+import AudioRecorder from 'node-audiorecorder';
+
+// 🎤 Init audio recorder.
+// const audio_input = new AudioRecorder({
+//     channels: 1,
+//     device: "plughw:1,0",
+//     program: 'arecord',
+//     format: 'S16_LE',
+//     rate: 44100,
+//     silence: 0
+// }, console);
 
 // 🎹 Connect to output MIDI device
 var midi_output = null;
 (async () => { midi_output = await JZZ().openMidiOut(process.env.MIDI_DEVICE_PORT).or('Cannot open MIDI Out port!'); })();
-
 
 var server = http.createServer(function (request, response) {
     console.log((new Date()) + ' Received request for ' + request.url);
@@ -17,28 +26,26 @@ var server = http.createServer(function (request, response) {
 });
 const wss = new WebSocketServer({ server });
 
-wss.on('connection', function connection(ws) {
+wss.on('connection', function connection(ws, req) {
+    let user_ip = req.socket.remoteAddress
+    if (!user_list.includes(user_ip)) user_list.push(user_ip);
+    let user_name = fruits[user_list.indexOf(user_ip)];
+
     ws.on('message', function message(data) {
         // 🚨 Parse incomming Buffer
-        data = JSON.parse('[' + data.toString() + ']')
+        data = JSON.parse(data.toString());
         let midi_event = [decimalToHex(data[0]), data[1], Math.floor(data[2])];
-        console.log(midi_event);
 
-        try {
-            midi_output.send(midi_event);
-
-
-        } catch (e) { }
+        try { midi_output.send(midi_event); } catch (e) { }
 
         // 📢 Broadcast event
         wss.clients.forEach(function each(client) {
-            if (client._readyState === 1)
-                client.send(JSON.stringify(data));
+            if (client._readyState === 1) {
+                client.send(JSON.stringify({ user_name: user_name, midi: data }));
+            }
 
         });
     });
-
-    // ws.send('something');
 });
 
 server.listen(8123);
@@ -54,3 +61,6 @@ function midiPanic() {
         midi_output.send(midi_event)
     }
 }
+
+var user_list = [];
+const fruits = ["Raspberries", "Pummelo", "Melon", "Papaya", "Elderberries", "Pineapple", "Mango", "Strawberries", "Clementine", "Tamarind", "Watermelon", "Kiwifruit", "Jackfruit", "Mangosteen", "Honeydew", "Durian", "Cherimoya", "Kumquat", "Avocado", "Plantain", "Feijoa", "Persimmon", "Mandarin", "Cherries", "Gooseberries", "Loquat", "Blueberries", "Cantaloupe", "Figs", "Blackberries", "Sapodilla", "Orange", "Pitanga", "Plums", "Nectarine", "Tangerine", "Peaches", "Lime", "Blackcurrant", "Carambola", "Pear", "Guava", "Grapes", "Pomegranate", "Olives", "Cranberries", "Lemon", "Coconut", "Prunes", "Breadfruit", "Grapefruit", "Date Fruit", "Lychee", "Rhubarb", "Quince", "Soursop", "Banana", "Longan", "Mulberries"]
