@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 import http from 'http';
-import { WebSocketServer } from 'ws';
+import { WebSocketServer, createWebSocketStream } from 'ws';
 import JZZ from 'jzz';
 import AudioRecorder from 'node-audiorecorder';
 
@@ -27,24 +27,31 @@ var server = http.createServer(function (request, response) {
 const wss = new WebSocketServer({ server });
 
 wss.on('connection', function connection(ws, req) {
-    let user_ip = req.socket.remoteAddress
+    let user_ip = req.socket.remoteAddress;
     if (!user_list.includes(user_ip)) user_list.push(user_ip);
     let user_name = fruits[user_list.indexOf(user_ip)];
 
-    ws.on('message', function message(data) {
+    ws.on('message', function message(message) {
         // 🚨 Parse incomming Buffer
-        data = JSON.parse(data.toString());
-        let midi_event = [decimalToHex(data[0]), data[1], Math.floor(data[2])];
+        message = JSON.parse(message.toString());
 
-        try { midi_output.send(midi_event); } catch (e) { }
+        if (message.type === 'midi-event') {
+            let midi_event = [decimalToHex(message.data[0]), message.data[1], Math.floor(message.data[2])];
 
-        // 📢 Broadcast event
-        wss.clients.forEach(function each(client) {
-            if (client._readyState === 1) {
-                client.send(JSON.stringify({ user_name: user_name, midi: data }));
-            }
+            try { midi_output.send(midi_event); } catch (e) { }
 
-        });
+            // 📢 Broadcast event
+            wss.clients.forEach(function each(client) {
+                if (client._readyState === 1) {
+                    client.send(JSON.stringify({ user_name: user_name, midi: message.data }));
+                }
+
+            });
+        }
+        if (message.type === 'ask-stream') {
+            const stream = createWebSocketStream(ws);
+            audio_input.start().stream().pipe(stream);
+        }
     });
 });
 
