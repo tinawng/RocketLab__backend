@@ -6,14 +6,13 @@ import JZZ from 'jzz';
 import AudioRecorder from 'node-audiorecorder';
 
 // 🎤 Init audio recorder.
-// const audio_input = new AudioRecorder({
-//     channels: 1,
-//     device: "plughw:1,0",
-//     program: 'arecord',
-//     format: 'S16_LE',
-//     rate: 44100,
-//     silence: 0
-// }, console);
+const audio_input = new AudioRecorder({
+    channels: 1,
+    device: "plughw:1,0",
+    program: 'arecord',
+    rate: 384000,
+    silence: 0
+}, console);
 
 // 🎹 Connect to output MIDI device
 var midi_output = null;
@@ -49,6 +48,7 @@ wss.on('connection', function connection(ws, req) {
             });
         }
         if (message.type === 'ask-stream') {
+            console.log('ask-stream');
             const stream = createWebSocketStream(ws);
             audio_input.start().stream().pipe(stream);
         }
